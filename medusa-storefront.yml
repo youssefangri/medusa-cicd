@@ -1,6 +1,6 @@
 ---
 - name: Deploy MedusaJS Frontstore
-  hosts: all  # Changed from medusa_servers to 'all' for Semaphore
+  hosts: all
   become: yes
   vars:
     app_dir: /var/www/medusa-frontstore
@@ -57,10 +57,11 @@
         src: env.j2
         dest: "{{ app_dir }}/.env.local"
 
+    # Changed from npm ci to npm install
     - name: Install npm dependencies
       npm:
         path: "{{ app_dir }}"
-        ci: yes
+        state: present  # This will run npm install instead of npm ci
 
     - name: Build the application
       command:
