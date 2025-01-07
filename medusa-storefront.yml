@@ -1,0 +1,118 @@
+---
+- name: Deploy MedusaJS Frontstore
+  hosts: all  # Changed from medusa_servers to 'all' for Semaphore
+  become: yes
+  vars:
+    app_dir: /var/www/medusa-frontstore
+    node_version: "18"
+    app_port: 8000
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install required system packages
+      apt:
+        name:
+          - curl
+          - git
+          - build-essential
+        state: present
+
+    - name: Add NodeSource repository
+      shell: |
+        curl -fsSL https://deb.nodesource.com/setup_{{ node_version }}.x | bash -
+      args:
+        creates: /etc/apt/sources.list.d/nodesource.list
+
+    - name: Install Node.js
+      apt:
+        name: nodejs
+        state: present
+
+    - name: Install PM2 globally
+      npm:
+        name: pm2
+        global: yes
+        state: present
+
+    - name: Create application directory
+      file:
+        path: "{{ app_dir }}"
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0755'
+
+    - name: Clone MedusaJS Frontstore repository
+      git:
+        repo: https://github.com/medusajs/nextjs-starter-medusa.git
+        dest: "{{ app_dir }}"
+        version: main
+
+    - name: Create .env file
+      template:
+        src: env.j2
+        dest: "{{ app_dir }}/.env.local"
+
+    - name: Install npm dependencies
+      npm:
+        path: "{{ app_dir }}"
+        ci: yes
+
+    - name: Build the application
+      command:
+        cmd: npm run build
+        chdir: "{{ app_dir }}"
+
+    - name: Configure PM2 to start the application
+      command:
+        cmd: pm2 start npm --name "medusa-frontstore" -- start
+        chdir: "{{ app_dir }}"
+      become: yes
+      become_user: "{{ ansible_user }}"
+
+    - name: Save PM2 process list
+      command: pm2 save
+      become: yes
+      become_user: "{{ ansible_user }}"
+
+    - name: Configure PM2 to start on boot
+      command: pm2 startup
+      become: yes
+
+- name: Configure Nginx
+  hosts: all
+  become: yes
+  tasks:
+    - name: Install Nginx
+      apt:
+        name: nginx
+        state: present
+
+    - name: Create Nginx configuration
+      template:
+        src: nginx.conf.j2
+        dest: /etc/nginx/sites-available/medusa-frontstore
+      notify: reload nginx
+
+    - name: Enable Nginx site
+      file:
+        src: /etc/nginx/sites-available/medusa-frontstore
+        dest: /etc/nginx/sites-enabled/medusa-frontstore
+        state: link
+      notify: reload nginx
+
+    - name: Remove default Nginx site
+      file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+      notify: reload nginx
+
+  handlers:
+    - name: reload nginx
+      service:
+        name: nginx
+        state: reloaded
