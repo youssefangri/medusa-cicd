@@ -48,9 +48,9 @@
 
     - name: Clone MedusaJS Frontstore repository
       git:
-        repo: https://github.com/medusajs/nextjs-starter-medusa.git
+        repo: https://github.com/youssefangri/medusa-cicd-nextjs-starter
         dest: "{{ app_dir }}"
-        version: v1
+        version: main
 
     - name: Create .env file
       template:
