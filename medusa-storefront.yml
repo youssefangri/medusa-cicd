@@ -6,6 +6,7 @@
     app_dir: /var/www/medusa-frontstore
     node_version: "18"
     app_port: 8000
+    deploy_user: "root"
 
   tasks:
     - name: Update apt cache
@@ -42,8 +43,8 @@
       file:
         path: "{{ app_dir }}"
         state: directory
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
+        owner: "{{ deploy_user }}"
+        group: "{{ deploy_user }}"
         mode: '0755'
 
     - name: Clone MedusaJS Frontstore repository
@@ -73,12 +74,12 @@
         cmd: pm2 start npm --name "medusa-frontstore" -- start
         chdir: "{{ app_dir }}"
       become: yes
-      become_user: "{{ ansible_user }}"
+      become_user: "{{ deploy_user }}"
 
     - name: Save PM2 process list
       command: pm2 save
       become: yes
-      become_user: "{{ ansible_user }}"
+      become_user: "{{ deploy_user }}"
 
     - name: Configure PM2 to start on boot
       command: pm2 startup
