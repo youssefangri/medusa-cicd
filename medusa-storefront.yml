@@ -52,6 +52,7 @@
         repo: https://github.com/youssefangri/medusa-cicd-nextjs-starter
         dest: "{{ app_dir }}"
         version: main
+        force: true
 
     - name: Create .env file
       template:
